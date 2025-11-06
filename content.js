@@ -39,7 +39,8 @@
       inputs: {},
       divStates: {},
       selectValues: {},
-      textareaValues: {}
+      textareaValues: {},
+      svgStates: {}
     };
 
     doc.querySelectorAll('input').forEach(input => {
@@ -74,6 +75,12 @@
           classList: Array.from(div.classList)
         };
       }
+    });
+
+    // Capture SVG states
+    doc.querySelectorAll('svg[id]').forEach((svg, index) => {
+      const key = svg.id || `svg-${index}`;
+      data.svgStates[key] = svg.innerHTML;
     });
 
     return data;
@@ -151,6 +158,16 @@
           if (data.divStates[key].classList) {
             div.className = data.divStates[key].classList.join(' ');
           }
+        }
+      });
+    }
+
+    // Restore SVG states
+    if (data.svgStates) {
+      Object.keys(data.svgStates).forEach(key => {
+        const svg = doc.getElementById(key) || doc.querySelectorAll('svg')[parseInt(key.split('-')[1]) || 0];
+        if (svg && data.svgStates[key]) {
+          svg.innerHTML = data.svgStates[key];
         }
       });
     }
@@ -275,6 +292,37 @@
       textarea.value = '';
       textarea.dispatchEvent(new Event('input', { bubbles: true }));
     });
+
+    // Clear SVG elements and their children
+    doc.querySelectorAll('svg').forEach(svg => {
+      // Reset any user-added elements within SVG
+      svg.querySelectorAll('path, circle, rect, line, polyline, polygon, text, g').forEach(element => {
+        // Remove any dynamically added elements (not original template elements)
+        if (element.hasAttribute('data-user-added') || 
+            element.classList.contains('user-marking') ||
+            element.classList.contains('chart-marking')) {
+          element.remove();
+        }
+        // Reset fill, stroke, and visibility attributes
+        if (element.hasAttribute('fill')) {
+          element.setAttribute('fill', 'none');
+        }
+        if (element.hasAttribute('stroke')) {
+          element.removeAttribute('stroke');
+        }
+        if (element.style.display) {
+          element.style.display = '';
+        }
+      });
+    });
+
+    // Reset canvas elements if any
+    doc.querySelectorAll('canvas').forEach(canvas => {
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    });
   }
 
   function addResetButton() {
@@ -282,12 +330,6 @@
 
     const resetBtn = document.createElement('button');
     resetBtn.id = 'perio-ext-reset-btn';
-    resetBtn.innerHTML = `
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="vertical-align: middle; margin-right: 6px;">
-        <path d="M8 3V1L5 4l3 3V5c2.21 0 4 1.79 4 4s-1.79 4-4 4-4-1.79-4-4H2c0 3.31 2.69 6 6 6s6-2.69 6-6-2.69-6-6-6z" fill="currentColor"/>
-      </svg>
-      Reset All Data
-    `;
     resetBtn.style.cssText = `
       position: fixed;
       top: 20px;
@@ -306,14 +348,13 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       letter-spacing: 0.3px;
       backdrop-filter: blur(10px);
-      position: relative;
       overflow: hidden;
-      display: flex;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
     `;
 
-    // Add shine effect overlay
+
     const shine = document.createElement('div');
     shine.style.cssText = `
       position: absolute;
@@ -323,8 +364,26 @@
       height: 100%;
       background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
       transition: left 0.5s;
+      pointer-events: none;
     `;
+    
+
+    const content = document.createElement('span');
+    content.style.cssText = `
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+    `;
+    content.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="margin-right: 6px;">
+        <path d="M8 3V1L5 4l3 3V5c2.21 0 4 1.79 4 4s-1.79 4-4 4-4-1.79-4-4H2c0 3.31 2.69 6 6 6s6-2.69 6-6-2.69-6-6-6z" fill="currentColor"/>
+      </svg>
+      Reset All Data
+    `;
+    
     resetBtn.appendChild(shine);
+    resetBtn.appendChild(content);
 
     resetBtn.addEventListener('mouseenter', () => {
       resetBtn.style.transform = 'translateY(-3px) scale(1.03)';
