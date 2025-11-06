@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "SaveMyChart",
+  "version": "1.0",
+  "description": "Saves periodontal chart data across sessions with reset functionality",
+  "permissions": [
+    "storage"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.periodontalchart-online.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ]
+}
